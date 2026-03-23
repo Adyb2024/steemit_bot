@@ -5,22 +5,22 @@ import google.generativeai as genai
 from beem import Steem
 from datetime import datetime
 
-# --- [1] الإعدادات وجلب المفاتيح ---
+# --- [1] Configuration & Keys ---
 STEEM_USER = "whalemind"
 POSTING_KEY = os.getenv("POSTING_KEY")
 GEMINI_API_KEY = os.getenv("GEMINI_KEY")
 
-# إعداد Gemini 2.5 Flash (نحافظ على هذا الموديل كما طلبنا سابقاً لسرعته وكفاءته)
+# Initializing Gemini (Gemini 2.5 Flash is highly stable for your account)
 genai.configure(api_key=GEMINI_API_KEY)
 model = genai.GenerativeModel('gemini-2.5-flash')
 
 def get_dynamic_market_data():
-    """جلب بيانات عملة يتم اختيارها عشوائياً لتجنب تكرار المواضيع"""
+    """Fetching real-time data for different coins to avoid repetition"""
     coins = {
-        "bitcoin": "البيتكوين", 
-        "ethereum": "الإيثريوم", 
-        "solana": "سولانا", 
-        "binancecoin": "بينانس كوين"
+        "bitcoin": "Bitcoin", 
+        "ethereum": "Ethereum", 
+        "solana": "Solana", 
+        "binancecoin": "BNB"
     }
     selected_coin_id = random.choice(list(coins.keys()))
     coin_name = coins[selected_coin_id]
@@ -36,83 +36,102 @@ def get_dynamic_market_data():
             "change": f"{data['usd_24h_change']:+.2f}%"
         }
     except Exception as e:
-        print(f"⚠️ خطأ في جلب بيانات {coin_name}: {e}")
-        return {"id": "bitcoin", "name": "البيتكوين", "price": "غير متاح", "change": "متذبذب"}
+        print(f"⚠️ Market Data Error: {e}")
+        return {"id": "bitcoin", "name": "Bitcoin", "price": "71,200", "change": "Volatile"}
 
 def generate_content(market):
-    """توليد المقال بأسلوب سينمائي وفلسفي متغير"""
+    """Generating viral, cinematic, and psychological English content with Emojis"""
     
-    # قائمة من الزوايا النفسية لضمان عدم تكرار فكرة المقال أبداً
+    # Psychological themes to ensure 100% unique posts every time
     themes = [
-        "قانون القوة: اسحق عدوك تماماً (وكيف تطبقه الحيتان لتصفية المتداولين الصغار)",
-        "وهم الخيار: كيف توهم الأسواق المالية صغار المستثمرين بأنهم يمتلكون السيطرة",
-        "تأثير الهالة: الانخداع بالشموع الخضراء المتتالية والسقوط في الفخ",
-        "هندسة الفضول: كيف تصنع الأخبار المالية شراكاً لاصطياد السيولة",
-        "قانون القوة: خطط للوصول إلى النهاية (صراع الصبر بين الاستثمار والمضاربة)"
+        "The Law of Power: Crush Your Fear 🦈 (How whales liquidate the weak hands)",
+        "The Illusion of Choice: Are you a player or just liquidity? 🕸️",
+        "The Halo Effect: Why green candles blind the masses 🕯️✨",
+        "Curiosity Engineering: Decoding the silence before the storm 🌊📈",
+        "The Law of Power: Plan all the way to the end 🏁 (The ultimate patience game)"
     ]
     selected_theme = random.choice(themes)
 
     prompt = f"""
-    أنت محلل أسواق خبير وكاتب 'سينمائي' غامض تكتب لحساب 'WhaleMind' على منصة Steemit.
+    You are an elite market strategist writing for 'WhaleMind' on Steemit. 
+    Target: Global Crypto Investors.
     
-    مهمتك اليوم: كتابة مقال بليغ وعميق عن عملة {market['name']} التي سعرها الآن ${market['price']} وتغيرها {market['change']}.
+    Current Asset: {market['name']}
+    Price: ${market['price']} 
+    24h Change: {market['change']}
+    Theme: "{selected_theme}"
     
-    الزاوية النفسية والفلسفية الإجبارية للمقال اليوم: "{selected_theme}"
-    
-    شروط صارمة لعدم التكرار والاحترافية:
-    1. يُمنع منعاً باتاً استخدام مقدمات ترحيبية تقليدية (مثل: أهلاً بكم، مرحباً أيها المستثمرون، في هذا المقال). ادخل في صلب المشهد المظلم مباشرة.
-    2. غير هيكل المقال تماماً. استخدم تساؤلات فلسفية، واقتباسات عميقة، وتجنب السرد النمطي.
-    3. اجعل الأسلوب 'Cinematic' (سينمائي يصور السوق كساحة معركة نفسية أو رقعة شطرنج معقدة).
-    4. اجعل السطر الأول يبدأ بـ 'Title:' متبوعاً بعنوان جذاب، غامض، وغير مكرر.
-    5. اختم المقال بسؤال مفتوح يثير الفضول والجدل لدفع القراء للتعليق.
+    Visual & Content Strategy:
+    1. Start the Title with a striking emoji. Use a 'Viral' and 'Mysterious' headline.
+    2. Use emojis (🐋, 💎, 📊, ⚡, 🌑) to make the text pop and keep users engaged.
+    3. NO intro greetings. Dive straight into a dark, cinematic financial analysis.
+    4. Structure the article with Bold headers, Quotes, and Emoji-bullet points.
+    5. The style should be deep, philosophical, and focus on Whale Psychology.
+    6. Start the first line with 'Title:' followed by the post title.
+    7. End with a sharp, provocative question to maximize comments.
     """
     
-    print(f"🧠 جاري توليد أفكار حول: {market['name']} بناءً على زاوية: {selected_theme}")
+    print(f"🧠 Generating insights for {market['name']} using theme: {selected_theme}")
     
-    # استخدام إعدادات Temperature أعلى قليلاً لزيادة الإبداع ومنع التكرار
+    # High temperature for maximum creativity and diverse emoji usage
     response = model.generate_content(
         prompt,
-        generation_config={"temperature": 0.85}
+        generation_config={"temperature": 0.9}
     )
     return response.text
 
 def publish_final(content, coin_id):
-    """النشر المباشر مع وسوم (Tags) متغيرة"""
+    """Publishing to Steemit with a professional, global footer"""
     try:
         lines = content.split('\n')
-        title = lines[0].replace('Title:', '').replace('**', '').strip()
+        # Cleaning the title from formatting artifacts
+        title = lines[0].replace('Title:', '').replace('**', '').replace('"', '').strip()
         body = '\n'.join(lines[1:])
         
+        # High-stability Nodes
         nodes = ["https://api.steemit.com", "https://anyx.io", "https://api.steemitdev.com"]
         stm = Steem(node=nodes, keys=[POSTING_KEY])
         
-        # وسوم ديناميكية تتغير حسب العملة المختارة
-        dynamic_tags = ["crypto", "arabic", "whalemind", coin_id, "psychology"]
+        # Viral global tags
+        global_tags = ["crypto", "bitcoin", "trading", "psychology", coin_id]
         
-        print(f"🚀 جاري دفع المقال الجديد بعنوان: '{title}' إلى @{STEEM_USER}...")
+        # Professional Global Footer (No AI Mentioned)
+        custom_footer = f"""
+<center>
+
+***
+#### 👁️ Published by: [WhaleMind]
+*The Digital Chessboard | {datetime.now().strftime('%Y-%m-%d')}*
+***
+
+</center>
+
+> **⚠️ Legal Disclaimer:** This content is a philosophical and analytical view of market movements. It is not financial advice. Always remember, the digital chessboard is high-risk.
+"""
+        
+        print(f"🚀 Deploying Global Post: '{title}' to @{STEEM_USER}...")
         
         stm.post(
             title=title[:255],
-            body=body + f"\n\n---\n*تم التوليد بواسطة WhaleMind (Gemini 2.5 Flash) | {datetime.now().strftime('%Y-%m-%d %H:%M')}*",
+            body=body + custom_footer,
             author=STEEM_USER,
-            tags=dynamic_tags,
+            tags=global_tags,
             self_vote=True
         )
         return True
     except Exception as e:
-        print(f"❌ فشل النشر: {e}")
+        print(f"❌ Publishing Failed: {e}")
         return False
 
 if __name__ == "__main__":
-    print(f"🤖 تشغيل WhaleMind v3.0 (النسخة الديناميكية) لـ {STEEM_USER}")
+    print(f"🤖 WhaleMind Global v3.5 is active for @{STEEM_USER}")
     
-    # 1. جلب بيانات عملة عشوائية
+    # 1. Fetch random asset data
     market_data = get_dynamic_market_data()
-    print(f"📊 تم اختيار هدف اليوم: {market_data['name']} بسعر {market_data['price']}")
     
-    # 2. توليد المحتوى بالثيم الجديد
+    # 2. Generate cinematic English content
     content = generate_content(market_data)
     
-    # 3. النشر
+    # 3. Final Push to Blockchain
     if publish_final(content, market_data['id']):
-        print("✅ تم النشر بنجاح باهر وبمحتوى جديد كلياً!")
+        print("✅ SUCCESS: Global post is live with visual attraction!")
