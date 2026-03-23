@@ -157,32 +157,22 @@ def publish_to_steemit(content):
         lines = content.split('\n')
         title = lines[0].replace('Title:', '').replace('**', '').strip()
         body = '\n'.join(lines[1:])
-
-        # استخدام نودز بديلة قوية (تجنب النود الذي يعطي 404)
-        nodes = [
-            "https://api.steemit.com", 
-            "https://anyx.io", 
-            "https://api.steemitdev.com",
-            "https://api.opensteem.com"
-        ]
         
-        # إنشاء اتصال مباشر
-        stm = Steem(node=nodes, keys=[POSTING_KEY])
+        # الاتصال المباشر بمفتاح النشر
+        # وضعنا النودز الأكثر استقراراً لضمان وصول المقال لـ whalemind
+        stm = Steem(node=["https://api.steemit.com", "https://anyx.io"], keys=[POSTING_KEY])
         
-        # التأكد من اسم الحساب بدون @ وبدون مسافات
-        target_account = "whalemind" 
-
-        print(f"📤 محاولة النشر النهائية للحساب: {target_account}")
-        
+        # النشر الفعلي
+        print(f"📤 جاري إرسال المقال إلى بلوكشين Steem باسم whalemind...")
         stm.post(
-            title=title[:255],
-            body=body,
-            author=target_account,
-            tags=["crypto", "steemexclusive", "arabic", "gemini25"],
+            title=title[:255], 
+            body=body, 
+            author="whalemind", 
+            tags=["crypto", "arabic", "gemini25", "trading"],
             self_vote=True
         )
-        print(f"✅ تم النشر بنجاح! الرابط: https://steemit.com/@{target_account}")
+        print("✅ مبروك يا أديب! تم النشر بنجاح.")
         return True
     except Exception as e:
-        print(f"❌ خطأ البلوكشين: {str(e)}")
+        print(f"❌ فشل النشر النهائي: {str(e)}")
         return False
