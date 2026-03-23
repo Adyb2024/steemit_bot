@@ -2,3 +2,4 @@ google-generativeai
 beem
 requests
 python-dotenv
+pip install google-genai  # المكتبة الجديدة
