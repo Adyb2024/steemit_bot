@@ -1,20 +1,22 @@
-name: Steemit Auto Bot
+name: Steemit Auto Bot (WhaleMind v3.6)
+
 on:
   schedule:
-    - cron: '0 */8 * * *'  # سينشر تلقائياً كل 8 ساعات
-  workflow_dispatch:      # زر للتشغيل اليدوي
+    # تم التحديث للنشر كل 4 ساعات (00:00, 04:00, 08:00, 12:00, 16:00, 20:00)
+    - cron: '0 */4 * * *'
+  workflow_dispatch:      # زر للتشغيل اليدوي من واجهة GitHub
 
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4  # تم التحديث لـ v4 لتجنب تحذيرات Node.js
+        uses: actions/checkout@v4
 
       - name: Set up Python
-        uses: actions/setup-python@v5 # تم التحديث لـ v5
+        uses: actions/setup-python@v5
         with:
-          python-version: '3.11'   # رفع الإصدار لـ 3.11 لحل مشاكل توافق مكتبة جوجل
+          python-version: '3.11'
 
       - name: Install dependencies
         run: |
