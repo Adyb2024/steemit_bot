@@ -2,6 +2,7 @@ import os
 import requests
 import google.generativeai as genai
 from beem import Steem
+from beem.account import Account
 from datetime import datetime
 import time
 
@@ -19,21 +20,8 @@ if not GEMINI_API_KEY:
 # إعداد Gemini 2.5
 try:
     genai.configure(api_key=GEMINI_API_KEY)
-    
-    # استخدام نموذج Gemini 2.5 Flash (متاح ومستقر) [citation:4][citation:6]
     model = genai.GenerativeModel('gemini-2.5-flash')
-    
-    # بديل: إذا أردت النسخة التجريبية الأحدث:
-    # model = genai.GenerativeModel('gemini-2.5-flash-preview-05-20')
-    
-    # بديل: إذا أردت النسخة Pro للمهام الأكثر تعقيداً:
-    # model = genai.GenerativeModel('gemini-2.5-pro')
-    
     print("✅ تم تهيئة Gemini 2.5 Flash بنجاح")
-    
-    # عرض معلومات النموذج (اختياري للتحقق)
-    print(f"📌 النموذج: gemini-2.5-flash | تاريخ المعرفة: يناير 2025 [citation:1][citation:6]")
-    
 except Exception as e:
     print(f"⚠️ خطأ في تهيئة Gemini: {e}")
     model = None
@@ -98,7 +86,6 @@ def generate_human_post(market_data):
     4. استخدم لغة بشرية وتعبيرات مثل: "لنكن صريحين"، "المفاجأة الحقيقية"
     5. استخدم Markdown للعناوين والاقتباسات
     6. اختم بسؤال مثير للجدل لجمع التعليقات
-    7. أضف 5 علامات مناسبة
     
     اكتب منشوراً طويلاً وغني بالمعلومات (400-600 كلمة).
     """
@@ -106,13 +93,12 @@ def generate_human_post(market_data):
     try:
         print("🤖 جاري توليد المحتوى باستخدام Gemini 2.5 Flash...")
         
-        # Gemini 2.5 يدعم معلمات إضافية مثل درجة الحرارة [citation:1][citation:6]
         response = model.generate_content(
             prompt,
             generation_config={
-                "temperature": 0.8,  # تحكم في الإبداعية (0-2) [citation:1]
-                "top_p": 0.95,       # تنويع الكلمات [citation:6]
-                "max_output_tokens": 2048,  # الحد الأقصى للإخراج [citation:1]
+                "temperature": 0.8,
+                "top_p": 0.95,
+                "max_output_tokens": 2048,
             }
         )
         return response.text
@@ -129,25 +115,16 @@ def generate_fallback_post(market_data):
 - التغير خلال 24 ساعة: {market_data['change']}
 - الاتجاه: {market_data['sentiment']}
 
-**تحليل Gemini 2.5 Flash:**
-السوق يشهد حركة نشطة مع تغيرات واضحة. مستوى ${market_data['price']} يعتبر نقطة محورية مهمة في الوقت الحالي.
-
-**التحليل النفسي للسوق:**
-المستثمرون يظهرون {market_data['sentiment']} اتجاهًا مع هذه التحركات. من المهم مراقبة سلوك الحيتان الكبار في السوق.
-
-**نصائح التداول:**
-1. استخدم إدارة رأس المال بحكمة
-2. لا تتخذ قرارات عاطفية
-3. راقب مستويات الدعم والمقاومة حول ${market_data['price']}
-4. تابع الأخبار المؤثرة على السوق
+**تحليل السوق:**
+السوق يشهد حركة نشطة مع تغيرات واضحة. مستوى ${market_data['price']} يعتبر نقطة محورية مهمة.
 
 **ختاماً:**
-ما رأيك في تحركات السوق الحالية؟ هل تتوقع استمرار هذا الاتجاه أم هناك تصحيح قادم؟ شاركنا تعليقك أدناه.
+ما رأيك في تحركات السوق الحالية؟ شاركنا تعليقك أدناه.
 
-#crypto #bitcoin #steemexclusive #trading #analysis #gemini25
+#crypto #bitcoin #steemexclusive #trading #analysis
 """
 
-def publish_to_steemit(content):
+def publish_to_steemit(content, market_data):
     """نشر المحتوى على Steemit"""
     try:
         # استخراج العنوان
@@ -174,33 +151,80 @@ def publish_to_steemit(content):
 *سعر البيتكوين: ${market_data['price']} | التغير: {market_data['change']}*
 """
         
-        # النشر
+        # النشر على Steemit
         print(f"📤 جاري النشر باسم {STEEM_USER}...")
         
+        # تهيئة اتصال Steem
+        stm = Steem(keys=[POSTING_KEY])
+        
+        # التحقق من الحساب بطريقة صحيحة
         try:
-            stm = Steem(keys=[POSTING_KEY])
-            
-            # التحقق من الاتصال
-            account_info = stm.get_account(STEEM_USER)
+            # استخدام Account للتحقق
+            account = Account(STEEM_USER, steem_instance=stm)
             print(f"✅ تم التحقق من حساب {STEEM_USER}")
-            
-            tags = ["crypto", "steemexclusive", "trading", "analysis", "gemini25"]
-            
+            print(f"📊 رصيد الحساب: {account.get_balance()}")
+        except Exception as acc_error:
+            print(f"⚠️ تحذير: {acc_error}")
+            print("⏳ محاولة النشر مباشرة...")
+        
+        # علامات التصنيف
+        tags = ["crypto", "steemexclusive", "trading", "analysis", "bitcoin"]
+        
+        # نشر المنشور
+        try:
             result = stm.post(
                 title=title[:255],
                 body=body + footer,
                 author=STEEM_USER,
                 tags=tags,
-                self_vote=False
+                self_vote=False  # تجنب التصويت الذاتي
             )
             
             print(f"✅ تم النشر بنجاح: {title}")
-            print(f"🔗 الرابط: https://steemit.com/@{STEEM_USER}/")
+            
+            # محاولة الحصول على رابط المنشور
+            try:
+                # الحصول على آخر منشور
+                posts = stm.get_account_history(STEEM_USER, limit=1, filter_by="post")
+                if posts:
+                    print(f"🔗 تم النشر بنجاح على Steemit")
+            except:
+                pass
+                
             return True
             
-        except Exception as steem_error:
-            print(f"❌ خطأ في الاتصال بـ Steem: {steem_error}")
-            return False
+        except Exception as post_error:
+            print(f"❌ خطأ في النشر: {post_error}")
+            
+            # محاولة بديلة باستخدام طريقة مختلفة
+            try:
+                print("🔄 محاولة النشر بطريقة بديلة...")
+                from beem.transactionbuilder import TransactionBuilder
+                from beembase import operations
+                
+                tx = TransactionBuilder(steem_instance=stm)
+                
+                op = operations.Post(
+                    **{
+                        "author": STEEM_USER,
+                        "title": title[:255],
+                        "body": body + footer,
+                        "permlink": f"whalemind-{datetime.now().strftime('%Y%m%d%H%M%S')}",
+                        "tags": tags,
+                        "beneficiaries": []
+                    }
+                )
+                
+                tx.appendOps(op)
+                tx.sign()
+                tx.broadcast()
+                
+                print(f"✅ تم النشر بنجاح بالطريقة البديلة: {title}")
+                return True
+                
+            except Exception as alt_error:
+                print(f"❌ فشلت الطريقة البديلة أيضاً: {alt_error}")
+                return False
         
     except Exception as e:
         print(f"❌ فشل النشر: {str(e)}")
@@ -221,7 +245,7 @@ if __name__ == "__main__":
     print(f"📝 المحتوى المولد (أول 300 حرف):\n{content[:300]}...")
     
     # النشر
-    if publish_to_steemit(content):
+    if publish_to_steemit(content, market_data):
         print("🎉 انتهى التنفيذ بنجاح")
     else:
         print("⚠️ انتهى التنفيذ مع أخطاء")
