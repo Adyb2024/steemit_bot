@@ -1,0 +1,3 @@
+beem
+google-generativeai
+requests
