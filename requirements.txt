@@ -1,3 +1,4 @@
+google-genai>=0.2.0
 beem
-google-generativeai
 requests
+python-dotenv
