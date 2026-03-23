@@ -2,6 +2,7 @@ import os
 import requests
 import google.generativeai as genai
 from beem import Steem
+from beem.account import Account
 from datetime import datetime
 import time
 
@@ -16,24 +17,33 @@ if not POSTING_KEY:
 if not GEMINI_API_KEY:
     raise ValueError("❌ GEMINI_KEY غير موجود في البيئة")
 
+print(f"📌 محاولة الاتصال بحساب: {STEEM_USER}")
+
+# اختبار الاتصال بـ Steem أولاً
+try:
+    # محاولة اتصال أولية
+    stm_test = Steem(keys=[POSTING_KEY])
+    print("✅ تم تهيئة اتصال Steem")
+    
+    # محاولة جلب معلومات الحساب للتحقق
+    try:
+        account_info = stm_test.get_account(STEEM_USER)
+        print(f"✅ تم التحقق من الحساب: {STEEM_USER}")
+        print(f"📊 رصيد STEEM: {account_info.get('balance', 'غير متاح')}")
+    except Exception as e:
+        print(f"⚠️ تحذير: لا يمكن جلب معلومات الحساب - {e}")
+        print("⏳ سنحاول النشر مباشرة...")
+        
+except Exception as e:
+    print(f"❌ فشل الاتصال بـ Steem: {e}")
+    print("⚠️ تأكد من صحة POSTING_KEY")
+    exit(1)
+
 # إعداد Gemini 2.5
 try:
     genai.configure(api_key=GEMINI_API_KEY)
-    
-    # استخدام نموذج Gemini 2.5 Flash (متاح ومستقر) [citation:4][citation:6]
     model = genai.GenerativeModel('gemini-2.5-flash')
-    
-    # بديل: إذا أردت النسخة التجريبية الأحدث:
-    # model = genai.GenerativeModel('gemini-2.5-flash-preview-05-20')
-    
-    # بديل: إذا أردت النسخة Pro للمهام الأكثر تعقيداً:
-    # model = genai.GenerativeModel('gemini-2.5-pro')
-    
     print("✅ تم تهيئة Gemini 2.5 Flash بنجاح")
-    
-    # عرض معلومات النموذج (اختياري للتحقق)
-    print(f"📌 النموذج: gemini-2.5-flash | تاريخ المعرفة: يناير 2025 [citation:1][citation:6]")
-    
 except Exception as e:
     print(f"⚠️ خطأ في تهيئة Gemini: {e}")
     model = None
@@ -93,26 +103,24 @@ def generate_human_post(market_data):
     
     المتطلبات:
     1. ابدأ بـ "Title:" ثم عنوان جذاب بالعربية
-    2. استخدم أسلوباً عميقاً مع لمحات فلسفية عن الجشع والسلطة (48 Laws of Power)
+    2. استخدم أسلوباً عميقاً مع لمحات فلسفية عن الجشع والسلطة
     3. حلل حركة السعر كصراع بين الحيتان
     4. استخدم لغة بشرية وتعبيرات مثل: "لنكن صريحين"، "المفاجأة الحقيقية"
     5. استخدم Markdown للعناوين والاقتباسات
     6. اختم بسؤال مثير للجدل لجمع التعليقات
-    7. أضف 5 علامات مناسبة
     
-    اكتب منشوراً طويلاً وغني بالمعلومات (400-600 كلمة).
+    اكتب منشوراً طويلاً وغني بالمعلومات.
     """
     
     try:
         print("🤖 جاري توليد المحتوى باستخدام Gemini 2.5 Flash...")
         
-        # Gemini 2.5 يدعم معلمات إضافية مثل درجة الحرارة [citation:1][citation:6]
         response = model.generate_content(
             prompt,
             generation_config={
-                "temperature": 0.8,  # تحكم في الإبداعية (0-2) [citation:1]
-                "top_p": 0.95,       # تنويع الكلمات [citation:6]
-                "max_output_tokens": 2048,  # الحد الأقصى للإخراج [citation:1]
+                "temperature": 0.8,
+                "top_p": 0.95,
+                "max_output_tokens": 2048,
             }
         )
         return response.text
@@ -122,68 +130,125 @@ def generate_human_post(market_data):
 
 def generate_fallback_post(market_data):
     """محتوى احتياطي في حال فشل Gemini"""
-    return f"""Title: تحليل السوق {datetime.now().strftime('%d/%m/%Y')}
+    return f"""Title: تحليل البيتكوين {datetime.now().strftime('%d/%m/%Y')}
 
 **بيانات السوق الحالية:**
 - سعر البيتكوين: ${market_data['price']}
 - التغير خلال 24 ساعة: {market_data['change']}
 - الاتجاه: {market_data['sentiment']}
 
-**تحليل Gemini 2.5 Flash:**
-السوق يشهد حركة نشطة مع تغيرات واضحة. مستوى ${market_data['price']} يعتبر نقطة محورية مهمة في الوقت الحالي.
+**تحليل فني:**
+السوق في حالة {market_data['sentiment']} مع اختراق لمستوى ${market_data['price']}.
 
-**التحليل النفسي للسوق:**
-المستثمرون يظهرون {market_data['sentiment']} اتجاهًا مع هذه التحركات. من المهم مراقبة سلوك الحيتان الكبار في السوق.
-
-**نصائح التداول:**
-1. استخدم إدارة رأس المال بحكمة
-2. لا تتخذ قرارات عاطفية
-3. راقب مستويات الدعم والمقاومة حول ${market_data['price']}
-4. تابع الأخبار المؤثرة على السوق
+**نقاط مهمة:**
+1. الحجم يتزايد مع هذه الحركة
+2. المقاومة التالية عند $72,000
+3. الدعم عند $70,500
 
 **ختاماً:**
-ما رأيك في تحركات السوق الحالية؟ هل تتوقع استمرار هذا الاتجاه أم هناك تصحيح قادم؟ شاركنا تعليقك أدناه.
+هل تعتقد أن هذا الصعود سيستمر؟ شاركنا رأيك في التعليقات!
 
-#crypto #bitcoin #steemexclusive #trading #analysis #gemini25
+#crypto #bitcoin #steemexclusive #trading #analysis
 """
 
-def publish_to_steemit(content):
-    """نشر المحتوى على Steemit - النسخة المصححة"""
+def publish_to_steemit(content, market_data):
+    """نشر المحتوى على Steemit"""
     try:
-        # [1] استخراج العنوان والمحتوى كما فعلت بنجاح
+        # استخراج العنوان
         lines = content.split('\n')
         title = None
         body_lines = []
+        
         for line in lines:
             if 'Title:' in line and not title:
-                title = line.split(':', 1)[1].strip().replace('**', '').replace('#', '')
+                title = line.split(':', 1)[1].strip()
+                title = title.replace('**', '').replace('#', '').strip()
             else:
                 body_lines.append(line)
         
         if not title:
-            title = f"رؤية الحوت الرقمي {datetime.now().strftime('%Y-%m-%d')}"
+            title = f"تحليل البيتكوين {datetime.now().strftime('%Y-%m-%d')}"
         
         body = '\n'.join(body_lines)
-        footer = f"\n---\n*Written by WhaleMind AI (Gemini 2.5) | {datetime.now().strftime('%Y-%m-%d')}*"
+        
+        # إضافة تذييل
+        footer = f"""
+---
+<div class="pull-right">
+<img src="https://steemitimages.com/256x256/https://cdn.steemitimages.com/DQm..." />
+</div>
 
-        # [2] النشر (تعديل طريقة الاتصال)
+*تم النشر بواسطة @{STEEM_USER} باستخدام WhaleMind AI (Gemini 2.5 Flash)*  
+*{datetime.now().strftime('%Y-%m-%d %H:%M')}*  
+*سعر البيتكوين: ${market_data['price']} | التغير: {market_data['change']}*
+"""
+        
+        full_body = body + footer
+        
+        # إنشاء permalink فريد وآمن
+        timestamp = datetime.now().strftime('%Y%m%d-%H%M%S')
+        permlink = f"whalemind-{timestamp}".lower().replace('_', '-')
+        
+        # علامات التصنيف (حد أقصى 5)
+        tags = ["crypto", "steemexclusive", "bitcoin", "trading", "analysis"]
+        
         print(f"📤 جاري النشر باسم {STEEM_USER}...")
+        print(f"📝 العنوان: {title}")
+        print(f"🔗 Permalink: {permlink}")
+        print(f"🏷️ العلامات: {tags}")
         
-        # استخدام نود (Nodes) موثوقة مباشرة
-        stm = Steem(node=["https://api.steemit.com", "https://anyx.io"], keys=[POSTING_KEY])
+        # تهيئة اتصال Steem
+        stm = Steem(keys=[POSTING_KEY])
         
-        # النشر المباشر (المكتبة ستتحقق من الحساب تلقائياً عند النشر)
-        stm.post(
-            title=title[:255],
-            body=body + footer,
-            author=STEEM_USER,
-            tags=["crypto", "steemexclusive", "trading", "arabic", "gemini25"],
-            self_vote=False
-        )
-        
-        print(f"✅ تم النشر بنجاح: {title}")
-        return True
+        # محاولة النشر
+        try:
+            result = stm.post(
+                title=title,
+                body=full_body,
+                author=STEEM_USER,
+                permlink=permlink,
+                tags=tags,
+                self_vote=False,
+                comment=None
+            )
+            
+            print(f"✅ تم النشر بنجاح!")
+            print(f"🔗 رابط المنشور: https://steemit.com/@{STEEM_USER}/{permlink}")
+            return True
+            
+        except Exception as e:
+            print(f"❌ فشل النشر: {e}")
+            
+            # طباعة تفاصيل الخطأ للمساعدة في التصحيح
+            print(f"📋 تفاصيل الخطأ: {type(e).__name__}: {str(e)}")
+            
+            return False
         
     except Exception as e:
-        print(f"❌ فشل النشر النهائي: {str(e)}")
+        print(f"❌ فشل النشر: {str(e)}")
         return False
+
+if __name__ == "__main__":
+    print(f"🚀 بدء تشغيل WhaleMind (Gemini 2.5) - {datetime.now()}")
+    print(f"📌 Python version: {os.sys.version}")
+    
+    # جلب البيانات
+    market_data = get_market_intelligence()
+    print(f"📊 Bitcoin: ${market_data['price']} ({market_data['change']}) - {market_data['sentiment']}")
+    
+    # توليد المحتوى
+    content = generate_human_post(market_data)
+    
+    # عرض أول 300 حرف للتحقق
+    print(f"📝 المحتوى المولد (أول 300 حرف):\n{content[:300]}...")
+    
+    # النشر
+    if publish_to_steemit(content, market_data):
+        print("🎉 انتهى التنفيذ بنجاح")
+    else:
+        print("⚠️ انتهى التنفيذ مع أخطاء")
+        print("\n💡 نصائح لحل المشكلة:")
+        print("1. تأكد من صحة POSTING_KEY في GitHub Secrets")
+        print("2. تأكد أن الحساب @whalemind موجود على Steemit")
+        print("3. تأكد أن POSTING_KEY لديه صلاحيات النشر")
+        print("4. جرب إعادة تعيين POSTING_KEY من https://steemit.com/@whalemind/permissions")
