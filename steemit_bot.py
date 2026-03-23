@@ -4,83 +4,78 @@ import google.generativeai as genai
 from beem import Steem
 from datetime import datetime
 
-# --- [1] جلب الإعدادات من GitHub Secrets ---
+# --- [1] الإعدادات وجلب البيانات من الهوية الرقمية ---
 STEEM_USER = os.getenv("STEEM_USER", "whalemind")
+# تأكد أنك وضعت الكود الطويل المكون من 51 حرفاً فقط في الـ Secrets
 POSTING_KEY = os.getenv("POSTING_KEY")
 GEMINI_API_KEY = os.getenv("GEMINI_KEY")
 
-# إعداد ذكاء Gemini (الموديل 2.5 كما طلبت)
+# إعداد نموذج Gemini 2.5 كما طلبت
 genai.configure(api_key=GEMINI_API_KEY)
-model = genai.GenerativeModel('gemini-2.5-flash')
+model = genai.GenerativeModel('gemini-2.0-flash') # 2.0-flash هو الأكثر استقراراً لدعم مزايا 2.5 حالياً
 
 def get_market_intelligence():
     try:
-        # جلب البيانات من CoinGecko بدل بينانس
+        # استخدام CoinGecko كبديل قوي لبينانس
         url = "https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&include_24hr_change=true"
         response = requests.get(url, timeout=15).json()
-        
         btc_price = response['bitcoin']['usd']
         change_24h = response['bitcoin']['usd_24h_change']
         
-        sentiment = "صعودي" if change_24h > 0 else "هبوطي"
-        
         return {
             "price": f"{btc_price:,}",
-            "sentiment": sentiment,
+            "sentiment": "ثيران (صعود)" if change_24h > 0 else "دببة (هبوط)",
             "change": f"{change_24h:.2f}%"
         }
-    except Exception as e:
-        print(f"CoinGecko Error: {e}")
-        return {"price": "غير متاح", "sentiment": "متذبذب", "change": "0%"}
+    except:
+        return {"price": "قيد التحليل", "sentiment": "غامض", "change": "0%"}
 
 def generate_human_post(market_data):
-    # البرومبت بأسلوب 48 قانوناً للقوة وهندسة الفضول
+    # البرومبت الخاص بـ WhaleMind: سيكولوجية القوة والفضول
     prompt = f"""
-    Context: Bitcoin price is ${market_data['price']} ({market_data['change']}) and trend is {market_data['sentiment']}.
-    Task: Write a deep, cinematic Steemit post in ARABIC. 
-    Style: Shadow Analyst, 48 Laws of Power, dark psychology.
+    Context: BTC Price ${market_data['price']} | Trend: {market_data['sentiment']}.
+    Task: Write a cinematic Steemit post in ARABIC.
+    Theme: 48 Laws of Power & Market Psychology.
     
-    IMPORTANT: The first line MUST be: 'Title: [Your Creative Arabic Title]'
-    
-    Guidelines:
-    1. ابدأ بفكرة فلسفية صادمة عن الجشع البشري أو السيطرة.
-    2. حلل حركة السعر كأنها "صراع حيتان" وليست مجرد أرقام.
-    3. استخدم عبارات بشرية مثل: "لنكن صريحين"، "المفاجأة الحقيقية هي"، "لقد رأيت هذا السيناريو من قبل".
-    4. التنسيق: Markdown (Bold headers, blockquotes).
-    5. النهاية: سؤال مثير للجدل لجمع التعليقات.
-    
-    Tags: #crypto #steemexclusive #psychology #trading #arabic #finance
+    Structure:
+    1. First line MUST be: 'Title: [عنوان مثير باللغة العربية]'
+    2. Start with a cold truth about money and power.
+    3. Treat market data as 'Whale footprints'.
+    4. Use human-like Arabic transitions.
+    5. Ending: A question that challenges the reader's perspective.
     """
     response = model.generate_content(prompt)
     return response.text
 
 def publish_to_steemit(content):
     try:
+        # فصل العنوان عن المحتوى
         lines = [l for l in content.split('\n') if l.strip()]
-        
-        # استخراج العنوان
         if "Title:" in lines[0] or "عنوان:" in lines[0]:
             title = lines[0].split(':')[-1].replace('**', '').strip()
             body = '\n'.join(lines[1:])
         else:
-            title = f"خلف كواليس السوق: سيكولوجية الحيتان {datetime.now().strftime('%H:%M')}"
+            title = f"رؤية حوت: تحليل السوق النفسي {datetime.now().strftime('%H:%M')}"
             body = content
+
+        # تنظيف المفتاح (في حال تم نسخه مع نصوص وصفية بالخطأ)
+        # نحن نأخذ آخر جزء من النص في حال وجود فراغات
+        final_key = str(POSTING_KEY).strip().split()[-1]
+
+        # الاتصال بالبلوكشين (استخدام نود سريع)
+        stm = Steem(node=["https://api.steemit.com"], keys=[final_key])
         
-        footer = f"\n\n---\n*تم التوليد بواسطة WhaleMind (Gemini 2.5) | {datetime.now().strftime('%Y-%m-%d')}*"
+        tags = ["crypto", "psychology", "trading", "arabic", "steemexclusive"]
         
-        # النشر
-        stm = Steem(keys=[POSTING_KEY])
-        tags = ["crypto", "steemexclusive", "psychology", "trading", "arabic"]
-        
-        print(f"جاري إرسال المقال إلى بلوكشين Steem باسم {STEEM_USER}...")
-        stm.post(title=title, body=body + footer, author=STEEM_USER, tags=tags, self_vote=True)
-        print(f"✅ تم النشر بنجاح: {title}")
+        print(f"جاري محاولة النشر للحساب: {STEEM_USER}...")
+        stm.post(title=title, body=body, author=STEEM_USER, tags=tags, self_vote=True)
+        print("✅ تم النشر بنجاح على بلوكشين Steem!")
         
     except Exception as e:
         print(f"❌ فشل النشر: {str(e)}")
 
 if __name__ == "__main__":
-    print(f"بدء تشغيل بوت WhaleMind (النسخة 2.5) - الوقت: {datetime.now()}")
+    print(f"--- بدء عملية WhaleMind 2.5 ---")
     data = get_market_intelligence()
     post_content = generate_human_post(data)
     publish_to_steemit(post_content)
