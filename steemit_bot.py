@@ -151,104 +151,38 @@ def generate_fallback_post(market_data):
 #crypto #bitcoin #steemexclusive #trading #analysis
 """
 
-def publish_to_steemit(content, market_data):
-    """نشر المحتوى على Steemit"""
+def publish_to_steemit(content):
     try:
-        # استخراج العنوان
+        # استخراج العنوان والمحتوى
         lines = content.split('\n')
-        title = None
-        body_lines = []
-        
-        for line in lines:
-            if 'Title:' in line and not title:
-                title = line.split(':', 1)[1].strip()
-                title = title.replace('**', '').replace('#', '').strip()
-            else:
-                body_lines.append(line)
-        
-        if not title:
-            title = f"تحليل البيتكوين {datetime.now().strftime('%Y-%m-%d')}"
-        
-        body = '\n'.join(body_lines)
-        
-        # إضافة تذييل
-        footer = f"""
----
-<div class="pull-right">
-<img src="https://steemitimages.com/256x256/https://cdn.steemitimages.com/DQm..." />
-</div>
+        title = lines[0].replace('Title:', '').replace('**', '').strip()
+        body = '\n'.join(lines[1:])
 
-*تم النشر بواسطة @{STEEM_USER} باستخدام WhaleMind AI (Gemini 2.5 Flash)*  
-*{datetime.now().strftime('%Y-%m-%d %H:%M')}*  
-*سعر البيتكوين: ${market_data['price']} | التغير: {market_data['change']}*
-"""
+        # استخدام نودز بديلة قوية (تجنب النود الذي يعطي 404)
+        nodes = [
+            "https://api.steemit.com", 
+            "https://anyx.io", 
+            "https://api.steemitdev.com",
+            "https://api.opensteem.com"
+        ]
         
-        full_body = body + footer
+        # إنشاء اتصال مباشر
+        stm = Steem(node=nodes, keys=[POSTING_KEY])
         
-        # إنشاء permalink فريد وآمن
-        timestamp = datetime.now().strftime('%Y%m%d-%H%M%S')
-        permlink = f"whalemind-{timestamp}".lower().replace('_', '-')
+        # التأكد من اسم الحساب بدون @ وبدون مسافات
+        target_account = "whalemind" 
+
+        print(f"📤 محاولة النشر النهائية للحساب: {target_account}")
         
-        # علامات التصنيف (حد أقصى 5)
-        tags = ["crypto", "steemexclusive", "bitcoin", "trading", "analysis"]
-        
-        print(f"📤 جاري النشر باسم {STEEM_USER}...")
-        print(f"📝 العنوان: {title}")
-        print(f"🔗 Permalink: {permlink}")
-        print(f"🏷️ العلامات: {tags}")
-        
-        # تهيئة اتصال Steem
-        stm = Steem(keys=[POSTING_KEY])
-        
-        # محاولة النشر
-        try:
-            result = stm.post(
-                title=title,
-                body=full_body,
-                author=STEEM_USER,
-                permlink=permlink,
-                tags=tags,
-                self_vote=False,
-                comment=None
-            )
-            
-            print(f"✅ تم النشر بنجاح!")
-            print(f"🔗 رابط المنشور: https://steemit.com/@{STEEM_USER}/{permlink}")
-            return True
-            
-        except Exception as e:
-            print(f"❌ فشل النشر: {e}")
-            
-            # طباعة تفاصيل الخطأ للمساعدة في التصحيح
-            print(f"📋 تفاصيل الخطأ: {type(e).__name__}: {str(e)}")
-            
-            return False
-        
+        stm.post(
+            title=title[:255],
+            body=body,
+            author=target_account,
+            tags=["crypto", "steemexclusive", "arabic", "gemini25"],
+            self_vote=True
+        )
+        print(f"✅ تم النشر بنجاح! الرابط: https://steemit.com/@{target_account}")
+        return True
     except Exception as e:
-        print(f"❌ فشل النشر: {str(e)}")
+        print(f"❌ خطأ البلوكشين: {str(e)}")
         return False
-
-if __name__ == "__main__":
-    print(f"🚀 بدء تشغيل WhaleMind (Gemini 2.5) - {datetime.now()}")
-    print(f"📌 Python version: {os.sys.version}")
-    
-    # جلب البيانات
-    market_data = get_market_intelligence()
-    print(f"📊 Bitcoin: ${market_data['price']} ({market_data['change']}) - {market_data['sentiment']}")
-    
-    # توليد المحتوى
-    content = generate_human_post(market_data)
-    
-    # عرض أول 300 حرف للتحقق
-    print(f"📝 المحتوى المولد (أول 300 حرف):\n{content[:300]}...")
-    
-    # النشر
-    if publish_to_steemit(content, market_data):
-        print("🎉 انتهى التنفيذ بنجاح")
-    else:
-        print("⚠️ انتهى التنفيذ مع أخطاء")
-        print("\n💡 نصائح لحل المشكلة:")
-        print("1. تأكد من صحة POSTING_KEY في GitHub Secrets")
-        print("2. تأكد أن الحساب @whalemind موجود على Steemit")
-        print("3. تأكد أن POSTING_KEY لديه صلاحيات النشر")
-        print("4. جرب إعادة تعيين POSTING_KEY من https://steemit.com/@whalemind/permissions")
