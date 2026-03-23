@@ -1,6 +1,6 @@
 import os
 import requests
-import google.generativeai as genai
+from google import genai  # المكتبة الجديدة
 from beem import Steem
 from datetime import datetime
 
@@ -9,9 +9,8 @@ STEEM_USER = "whalemind"
 POSTING_KEY = os.getenv("POSTING_KEY")
 GEMINI_API_KEY = os.getenv("GEMINI_KEY")
 
-# إعداد Gemini 2.5 Flash
-genai.configure(api_key=GEMINI_API_KEY)
-model = genai.GenerativeModel('gemini-2.5-flash')
+# إعداد Gemini 2.5 Flash (المكتبة الجديدة)
+client = genai.Client(api_key=GEMINI_API_KEY)
 
 def get_market_data():
     """جلب بيانات البيتكوين"""
@@ -30,7 +29,10 @@ def generate_content(market):
     استخدم أسلوباً يحلل سيكولوجية الجشع والخوف، واذكر صراع الحيتان في السوق.
     اجعل العنوان يبدأ بـ 'Title:' واختم بـ 5 وسوم (tags).
     """
-    response = model.generate_content(prompt)
+    response = client.models.generate_content(
+        model='gemini-2.5-flash',
+        contents=prompt
+    )
     return response.text
 
 def publish_final(content):
@@ -58,7 +60,7 @@ def publish_final(content):
         return False
 
 if __name__ == "__main__":
-    print(f"🤖 تشغيل WhaleMind v2.7 لـ {STEEM_USER}")
+    print(f"🤖 تشغيل WhaleMind v2.8 لـ {STEEM_USER}")
     market = get_market_data()
     content = generate_content(market)
     if publish_final(content):
