@@ -2,28 +2,28 @@ name: Steemit Auto Bot
 on:
   schedule:
     - cron: '0 */8 * * *'  # سينشر تلقائياً كل 8 ساعات
-  workflow_dispatch:      # زر للتشغيل اليدوي وقتما تحب
+  workflow_dispatch:      # زر للتشغيل اليدوي
 
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4  # تم التحديث لـ v4 لتجنب تحذيرات Node.js
 
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5 # تم التحديث لـ v5
         with:
-          python-version: '3.9'
+          python-version: '3.11'   # رفع الإصدار لـ 3.11 لحل مشاكل توافق مكتبة جوجل
 
       - name: Install dependencies
         run: |
-          pip install beem google-generativeai requests
+          pip install --upgrade pip
+          pip install beem google-generativeai requests python-dotenv
 
       - name: Run Bot
         env:
           POSTING_KEY: ${{ secrets.POSTING_KEY }}
           GEMINI_KEY: ${{ secrets.GEMINI_KEY }}
-          STEEM_USER: "whalemind" # اسم حسابك كما يظهر في الصورة
+          STEEM_USER: "whalemind" 
         run: python steemit_bot.py
-
