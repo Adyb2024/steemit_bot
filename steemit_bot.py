@@ -152,27 +152,39 @@ def generate_fallback_post(market_data):
 """
 
 def publish_to_steemit(content):
+    """النسخة النهائية لضمان النشر على whalemind"""
     try:
-        # استخراج العنوان والمحتوى
+        # [1] استخراج العنوان
         lines = content.split('\n')
         title = lines[0].replace('Title:', '').replace('**', '').strip()
         body = '\n'.join(lines[1:])
         
-        # الاتصال المباشر بمفتاح النشر
-        # وضعنا النودز الأكثر استقراراً لضمان وصول المقال لـ whalemind
-        stm = Steem(node=["https://api.steemit.com", "https://anyx.io"], keys=[POSTING_KEY])
+        # [2] قائمة خوادم (Nodes) موثوقة جداً
+        nodes = [
+            "https://api.steemit.com",
+            "https://anyx.io",
+            "https://api.steemitdev.com",
+            "https://rpc.amorgan.xyz"
+        ]
         
-        # النشر الفعلي
-        print(f"📤 جاري إرسال المقال إلى بلوكشين Steem باسم whalemind...")
+        # [3] الاتصال المباشر (استبدل whalemind بالمتغير لضمان الدقة)
+        target_user = "whalemind" 
+        stm = Steem(node=nodes, keys=[POSTING_KEY])
+        
+        print(f"📤 جاري النشر الفعلي للحساب: {target_user}...")
+        
+        # [4] عملية النشر (بدون فحص مسبق لتجنب أخطاء المكتبة)
         stm.post(
             title=title[:255], 
             body=body, 
-            author="whalemind", 
+            author=target_user, 
             tags=["crypto", "arabic", "gemini25", "trading"],
             self_vote=True
         )
-        print("✅ مبروك يا أديب! تم النشر بنجاح.")
+        
+        print(f"✅ مبروك يا أديب! تم النشر بنجاح على صفحة @{target_user}")
         return True
     except Exception as e:
         print(f"❌ فشل النشر النهائي: {str(e)}")
+        # إذا ظهر خطأ 'AccountDoesNotExists' مجدداً، تأكد من الـ Posting Key في Secrets
         return False
