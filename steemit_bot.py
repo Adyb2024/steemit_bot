@@ -3,6 +3,8 @@ import requests
 import google.generativeai as genai
 from beem import Steem
 from beem.account import Account
+from beem.transactionbuilder import TransactionBuilder
+from beembase import operations
 from datetime import datetime
 import time
 
@@ -81,13 +83,13 @@ def generate_human_post(market_data):
     
     المتطلبات:
     1. ابدأ بـ "Title:" ثم عنوان جذاب بالعربية
-    2. استخدم أسلوباً عميقاً مع لمحات فلسفية عن الجشع والسلطة (48 Laws of Power)
+    2. استخدم أسلوباً عميقاً مع لمحات فلسفية عن الجشع والسلطة
     3. حلل حركة السعر كصراع بين الحيتان
     4. استخدم لغة بشرية وتعبيرات مثل: "لنكن صريحين"، "المفاجأة الحقيقية"
     5. استخدم Markdown للعناوين والاقتباسات
     6. اختم بسؤال مثير للجدل لجمع التعليقات
     
-    اكتب منشوراً طويلاً وغني بالمعلومات (400-600 كلمة).
+    اكتب منشوراً طويلاً وغني بالمعلومات.
     """
     
     try:
@@ -108,18 +110,21 @@ def generate_human_post(market_data):
 
 def generate_fallback_post(market_data):
     """محتوى احتياطي في حال فشل Gemini"""
-    return f"""Title: تحليل السوق {datetime.now().strftime('%d/%m/%Y')}
+    return f"""Title: تحليل البيتكوين {datetime.now().strftime('%d/%m/%Y')}
 
 **بيانات السوق الحالية:**
 - سعر البيتكوين: ${market_data['price']}
 - التغير خلال 24 ساعة: {market_data['change']}
 - الاتجاه: {market_data['sentiment']}
 
-**تحليل السوق:**
-السوق يشهد حركة نشطة مع تغيرات واضحة. مستوى ${market_data['price']} يعتبر نقطة محورية مهمة.
+**تحليل فني:**
+السوق في حالة {market_data['sentiment']} مع اختراق لمستوى ${market_data['price']}.
 
-**ختاماً:**
-ما رأيك في تحركات السوق الحالية؟ شاركنا تعليقك أدناه.
+**توقعات:**
+نراقب مستويات المقاومة القادمة.
+
+**ماذا تتوقع؟**
+شاركنا رأيك في التعليقات!
 
 #crypto #bitcoin #steemexclusive #trading #analysis
 """
@@ -140,90 +145,85 @@ def publish_to_steemit(content, market_data):
                 body_lines.append(line)
         
         if not title:
-            title = f"تحليل السوق {datetime.now().strftime('%Y-%m-%d')}"
+            title = f"تحليل البيتكوين {datetime.now().strftime('%Y-%m-%d')}"
         
         body = '\n'.join(body_lines)
         
         # إضافة تذييل
         footer = f"""
 ---
-*تم النشر بواسطة WhaleMind AI (Gemini 2.5 Flash) | {datetime.now().strftime('%Y-%m-%d %H:%M')}*
+*تم النشر بواسطة WhaleMind AI (Gemini 2.5 Flash)*
+*الساعة: {datetime.now().strftime('%Y-%m-%d %H:%M')}*
 *سعر البيتكوين: ${market_data['price']} | التغير: {market_data['change']}*
 """
         
-        # النشر على Steemit
-        print(f"📤 جاري النشر باسم {STEEM_USER}...")
+        full_body = body + footer
         
-        # تهيئة اتصال Steem
-        stm = Steem(keys=[POSTING_KEY])
-        
-        # التحقق من الحساب بطريقة صحيحة
-        try:
-            # استخدام Account للتحقق
-            account = Account(STEEM_USER, steem_instance=stm)
-            print(f"✅ تم التحقق من حساب {STEEM_USER}")
-            print(f"📊 رصيد الحساب: {account.get_balance()}")
-        except Exception as acc_error:
-            print(f"⚠️ تحذير: {acc_error}")
-            print("⏳ محاولة النشر مباشرة...")
+        # إنشاء permalink فريد
+        permlink = f"whalemind-{datetime.now().strftime('%Y%m%d-%H%M%S')}"
         
         # علامات التصنيف
         tags = ["crypto", "steemexclusive", "trading", "analysis", "bitcoin"]
         
-        # نشر المنشور
+        print(f"📤 جاري النشر باسم {STEEM_USER}...")
+        print(f"📝 العنوان: {title}")
+        print(f"🔗 Permalink: {permlink}")
+        
+        # تهيئة اتصال Steem
+        stm = Steem(keys=[POSTING_KEY])
+        
+        # الطريقة الصحيحة للنشر باستخدام beem
         try:
+            # استخدام طريقة post المباشرة
             result = stm.post(
-                title=title[:255],
-                body=body + footer,
+                title=title,
+                body=full_body,
                 author=STEEM_USER,
+                permlink=permlink,
                 tags=tags,
-                self_vote=False  # تجنب التصويت الذاتي
+                self_vote=False
             )
             
-            print(f"✅ تم النشر بنجاح: {title}")
-            
-            # محاولة الحصول على رابط المنشور
-            try:
-                # الحصول على آخر منشور
-                posts = stm.get_account_history(STEEM_USER, limit=1, filter_by="post")
-                if posts:
-                    print(f"🔗 تم النشر بنجاح على Steemit")
-            except:
-                pass
-                
+            print(f"✅ تم النشر بنجاح!")
+            print(f"🔗 الرابط: https://steemit.com/@{STEEM_USER}/{permlink}")
             return True
             
-        except Exception as post_error:
-            print(f"❌ خطأ في النشر: {post_error}")
+        except Exception as e:
+            print(f"❌ فشل النشر بالطريقة العادية: {e}")
             
-            # محاولة بديلة باستخدام طريقة مختلفة
+            # محاولة بديلة باستخدام TransactionBuilder
             try:
-                print("🔄 محاولة النشر بطريقة بديلة...")
-                from beem.transactionbuilder import TransactionBuilder
-                from beembase import operations
+                print("🔄 محاولة النشر بالطريقة البديلة...")
                 
-                tx = TransactionBuilder(steem_instance=stm)
-                
-                op = operations.Post(
+                # إعداد العملية
+                op = operations.Comment(
                     **{
+                        "parent_author": "",
+                        "parent_permlink": tags[0],  # أول علامة كـ parent
                         "author": STEEM_USER,
-                        "title": title[:255],
-                        "body": body + footer,
-                        "permlink": f"whalemind-{datetime.now().strftime('%Y%m%d%H%M%S')}",
-                        "tags": tags,
-                        "beneficiaries": []
+                        "permlink": permlink,
+                        "title": title,
+                        "body": full_body,
+                        "json_metadata": {
+                            "tags": tags,
+                            "app": "whalemind/1.0",
+                            "format": "markdown"
+                        }
                     }
                 )
                 
+                # بناء وإرسال المعاملة
+                tx = TransactionBuilder(steem_instance=stm)
                 tx.appendOps(op)
                 tx.sign()
-                tx.broadcast()
+                result = tx.broadcast()
                 
-                print(f"✅ تم النشر بنجاح بالطريقة البديلة: {title}")
+                print(f"✅ تم النشر بنجاح بالطريقة البديلة!")
+                print(f"🔗 الرابط: https://steemit.com/@{STEEM_USER}/{permlink}")
                 return True
                 
             except Exception as alt_error:
-                print(f"❌ فشلت الطريقة البديلة أيضاً: {alt_error}")
+                print(f"❌ فشلت الطريقة البديلة: {alt_error}")
                 return False
         
     except Exception as e:
