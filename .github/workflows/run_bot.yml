@@ -24,5 +24,5 @@ jobs:
         env:
           POSTING_KEY: ${{ secrets.POSTING_KEY }}
           GEMINI_KEY: ${{ secrets.GEMINI_KEY }}
-          STEEM_USER: "Adyb2024" # اسم حسابك كما يظهر في الصورة
+          STEEM_USER: "whalemind" # اسم حسابك كما يظهر في الصورة
         run: python main.py
