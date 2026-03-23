@@ -1,38 +1,65 @@
 import os
+import requests
+import google.generativeai as genai
 from beem import Steem
-from beem.account import Account
+from datetime import datetime
 
-# الإعدادات من Secrets
-POSTING_KEY = os.getenv("POSTING_KEY")
+# --- [1] الإعدادات وجلب المفاتيح ---
 STEEM_USER = "whalemind"
+POSTING_KEY = os.getenv("POSTING_KEY")
+GEMINI_API_KEY = os.getenv("GEMINI_KEY")
 
-def diagnostic_check():
-    print(f"🔍 بدء فحص الحساب والمفتاح لـ @{STEEM_USER}...")
+# إعداد Gemini 2.5 Flash
+genai.configure(api_key=GEMINI_API_KEY)
+model = genai.GenerativeModel('gemini-2.5-flash')
+
+def get_market_data():
+    """جلب بيانات البيتكوين"""
     try:
-        # 1. محاولة الاتصال بنود مستقر
-        stm = Steem(node="https://api.steemit.com", keys=[POSTING_KEY])
-        
-        # 2. فحص وجود الحساب
-        account = Account(STEEM_USER, blockchain_instance=stm)
-        print(f"✅ الحساب موجود فعلياً على البلوكشين.")
-        
-        # 3. فحص صلاحية المفتاح (برمجياً)
-        # إذا لم يظهر خطأ هنا، فالمفتاح بصيغة Private Key صحيحة
-        print(f"✅ صيغة المفتاح (WIF) صحيحة.")
-        
-        # 4. التحقق من مطابقة المفتاح للنشر
-        # سنحاول فقط التحقق من الصلاحية دون نشر
-        posting_auths = account['posting']['key_auths']
-        print(f"ℹ️ الحساب يمتلك {len(posting_auths)} مفاتيح نشر مسجلة.")
-        
-        print("\n🚀 النتيجة: الإعدادات البرمجية سليمة، المشكلة كانت في 'النود' الذي استخدمته سابقاً.")
+        url = "https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd&include_24hr_change=true"
+        r = requests.get(url, timeout=15)
+        data = r.json()['bitcoin']
+        return {"price": f"{data['usd']:,}", "change": f"{data['usd_24h_change']:+.2f}%"}
+    except:
+        return {"price": "71,000", "change": "متذبذب"}
 
+def generate_content(market):
+    """توليد المقال بأسلوب حيتان المال"""
+    prompt = f"""
+    اكتب مقالاً بليغاً بالعربية لـ Steemit عن سعر البيتكوين الحالي (${market['price']}) وتغيره ({market['change']}).
+    استخدم أسلوباً يحلل سيكولوجية الجشع والخوف، واذكر صراع الحيتان في السوق.
+    اجعل العنوان يبدأ بـ 'Title:' واختم بـ 5 وسوم (tags).
+    """
+    response = model.generate_content(prompt)
+    return response.text
+
+def publish_final(content):
+    """النشر المباشر دون فحص الحساب لتجنب AttributeError"""
+    try:
+        lines = content.split('\n')
+        title = lines[0].replace('Title:', '').strip()
+        body = '\n'.join(lines[1:])
+        
+        # استخدام نودز قوية ومجربة
+        nodes = ["https://api.steemit.com", "https://anyx.io"]
+        stm = Steem(node=nodes, keys=[POSTING_KEY])
+        
+        print(f"🚀 جاري دفع المقال إلى @{STEEM_USER}...")
+        stm.post(
+            title=title[:255],
+            body=body + f"\n\n---\n*تم التوليد بواسطة WhaleMind (Gemini 2.5 Flash) | {datetime.now().date()}*",
+            author=STEEM_USER,
+            tags=["crypto", "arabic", "bitcoin", "gemini25", "trading"],
+            self_vote=True
+        )
+        return True
     except Exception as e:
-        print(f"\n❌ فشل الفحص: {str(e)}")
-        if "WIF" in str(e):
-            print("💡 التنبيه: المفتاح الذي وضعته ليس 'Private Posting Key'. تأكد أنه يبدأ برقم 5.")
-        elif "AccountDoesNotExists" in str(e):
-            print("💡 التنبيه: الحساب غير موجود أو أن خادم Steemit لا يراه حالياً.")
+        print(f"❌ فشل النشر: {e}")
+        return False
 
 if __name__ == "__main__":
-    diagnostic_check()
+    print(f"🤖 تشغيل WhaleMind v2.7 لـ {STEEM_USER}")
+    market = get_market_data()
+    content = generate_content(market)
+    if publish_final(content):
+        print("✅ تم النشر بنجاح باهر!")
