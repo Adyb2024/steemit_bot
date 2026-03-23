@@ -1,0 +1,28 @@
+name: Steemit Auto Bot
+on:
+  schedule:
+    - cron: '0 */8 * * *'  # سينشر تلقائياً كل 8 ساعات
+  workflow_dispatch:      # زر للتشغيل اليدوي وقتما تحب
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+
+      - name: Install dependencies
+        run: |
+          pip install beem google-generativeai requests
+
+      - name: Run Bot
+        env:
+          POSTING_KEY: ${{ secrets.POSTING_KEY }}
+          GEMINI_KEY: ${{ secrets.GEMINI_KEY }}
+          STEEM_USER: "Adyb2024" # اسم حسابك كما يظهر في الصورة
+        run: python main.py
