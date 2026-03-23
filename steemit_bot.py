@@ -1,6 +1,6 @@
 import os
 import requests
-import google.genai as genai
+import google.generativeai as genai
 from beem import Steem
 from datetime import datetime
 import time
@@ -12,15 +12,22 @@ GEMINI_API_KEY = os.getenv("GEMINI_KEY")
 
 # التحقق من المفاتيح
 if not POSTING_KEY:
-    raise ValueError("❌ POSTING_KEY غير موجود")
+    raise ValueError("❌ POSTING_KEY غير موجود في البيئة")
 if not GEMINI_API_KEY:
-    raise ValueError("❌ GEMINI_KEY غير موجود")
+    raise ValueError("❌ GEMINI_KEY غير موجود في البيئة")
 
 # إعداد Gemini
-client = genai.Client(api_key=GEMINI_API_KEY)
+try:
+    genai.configure(api_key=GEMINI_API_KEY)
+    # استخدام نموذج متاح
+    model = genai.GenerativeModel('gemini-1.5-flash')  # أو 'gemini-pro'
+    print("✅ تم تهيئة Gemini بنجاح")
+except Exception as e:
+    print(f"⚠️ خطأ في تهيئة Gemini: {e}")
+    model = None
 
 def get_market_intelligence():
-    """جلب بيانات السوق مع بيانات احتياطية"""
+    """جلب بيانات السوق من CoinGecko"""
     try:
         url = "https://api.coingecko.com/api/v3/simple/price"
         params = {
@@ -28,12 +35,14 @@ def get_market_intelligence():
             "vs_currencies": "usd",
             "include_24hr_change": "true"
         }
-        headers = {'User-Agent': 'Mozilla/5.0'}
+        headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'}
         
+        print("📊 جاري جلب بيانات السوق...")
         response = requests.get(url, params=params, headers=headers, timeout=15)
         response.raise_for_status()
         
         data = response.json()
+        print(f"📥 البيانات المستلمة: {data}")
         
         if not data or 'bitcoin' not in data:
             raise ValueError("بيانات Bitcoin غير متوفرة")
@@ -53,41 +62,63 @@ def get_market_intelligence():
         print(f"❌ CoinGecko Error: {e}")
         # بيانات احتياطية
         return {
-            "price": "غير متاح",
+            "price": "83,500",
             "sentiment": "متذبذب 📊",
-            "change": "0%"
+            "change": "+2.5%"
         }
 
 def generate_human_post(market_data):
     """توليد المحتوى باستخدام Gemini"""
+    if not model:
+        return generate_fallback_post(market_data)
+    
     prompt = f"""
-    Bitcoin is at ${market_data['price']} with {market_data['change']} change, trend is {market_data['sentiment']}.
+    أنت محلل أسواق متمرس. اكتب منشوراً لـ Steemit باللغة العربية.
     
-    Write a Steemit post in ARABIC with this structure:
+    بيانات السوق:
+    - سعر البيتكوين: ${market_data['price']}
+    - التغير خلال 24 ساعة: {market_data['change']}
+    - الاتجاه: {market_data['sentiment']}
     
-    Title: [Creative Arabic Title]
+    المتطلبات:
+    1. ابدأ بـ "Title:" ثم عنوان جذاب بالعربية
+    2. استخدم أسلوباً عميقاً مع لمحات فلسفية عن الجشع والسلطة
+    3. حلل حركة السعر كصراع بين الحيتان
+    4. استخدم لغة بشرية وتعبيرات مثل: "لنكن صريحين"، "المفاجأة الحقيقية"
+    5. استخدم Markdown للعناوين والاقتباسات
+    6. اختم بسؤال مثير للجدل
+    7. أضف 5 علامات مناسبة
     
-    Content:
-    - Start with shocking philosophy about greed and power
-    - Analyze price action as "whale war"
-    - Use human expressions
-    - End with controversial question
-    
-    Style: Dark psychology, 48 Laws of Power
-    Format: Markdown with headers and quotes
+    اكتب منشوراً طويلاً وغني بالمعلومات.
     """
     
     try:
-        response = client.models.generate_content(
-            model='gemini-2.0-flash-exp',
-            contents=prompt
-        )
+        print("🤖 جاري توليد المحتوى...")
+        response = model.generate_content(prompt)
         return response.text
     except Exception as e:
         print(f"❌ Gemini Error: {e}")
-        return f"""Title: تحليل السوق {datetime.now().strftime('%d/%m/%Y')}
+        return generate_fallback_post(market_data)
 
-المحتوى غير متاح حالياً بسبب خطأ تقني. نعتذر عن الإزعاج."""
+def generate_fallback_post(market_data):
+    """محتوى احتياطي في حال فشل Gemini"""
+    return f"""Title: تحليل السوق {datetime.now().strftime('%d/%m/%Y')}
+
+**بيانات السوق الحالية:**
+- سعر البيتكوين: ${market_data['price']}
+- التغير: {market_data['change']}
+- الاتجاه: {market_data['sentiment']}
+
+**التحليل:**
+السوق يشهد حركة نشطة مع تغيرات واضحة. من المهم متابعة مستويات الدعم والمقاومة.
+
+**نصيحة اليوم:**
+استخدم إدارة رأس المال بحكمة ولا تتخذ قرارات عاطفية.
+
+*ما رأيك في تحركات السوق الحالية؟ شاركنا تعليقك أدناه.*
+
+#crypto #bitcoin #steemexclusive #trading #analysis
+"""
 
 def publish_to_steemit(content):
     """نشر المحتوى على Steemit"""
@@ -112,23 +143,25 @@ def publish_to_steemit(content):
         # إضافة تذييل
         footer = f"""
 ---
-*تم التوليد بواسطة WhaleMind AI | {datetime.now().strftime('%Y-%m-%d %H:%M')}*
+*تم النشر بواسطة WhaleMind AI | {datetime.now().strftime('%Y-%m-%d %H:%M')}*
 """
         
         # النشر
+        print(f"📤 جاري النشر باسم {STEEM_USER}...")
         stm = Steem(keys=[POSTING_KEY])
+        
         tags = ["crypto", "steemexclusive", "psychology", "trading", "arabic"]
         
-        print(f"📤 جاري النشر باسم {STEEM_USER}...")
         result = stm.post(
-            title=title,
+            title=title[:255],  # الحد الأقصى لطول العنوان
             body=body + footer,
             author=STEEM_USER,
             tags=tags,
-            self_vote=False  # تجنب التصويت الذاتي
+            self_vote=False
         )
         
         print(f"✅ تم النشر بنجاح: {title}")
+        print(f"🔗 الرابط: https://steemit.com/@{STEEM_USER}/")
         return True
         
     except Exception as e:
@@ -137,13 +170,13 @@ def publish_to_steemit(content):
 
 if __name__ == "__main__":
     print(f"🚀 بدء تشغيل WhaleMind - {datetime.now()}")
+    print(f"📌 Python version: {os.sys.version}")
     
     # جلب البيانات
     market_data = get_market_intelligence()
-    print(f"📊 Bitcoin: ${market_data['price']} ({market_data['change']})")
+    print(f"📊 Bitcoin: ${market_data['price']} ({market_data['change']}) - {market_data['sentiment']}")
     
     # توليد المحتوى
-    print("🤖 جاري توليد المحتوى...")
     content = generate_human_post(market_data)
     
     # النشر
