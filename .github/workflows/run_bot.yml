@@ -1,10 +1,10 @@
-name: Steemit Auto Bot (WhaleMind v3.6)
+name: Steemit Global Bot (6H Cycle)
 
 on:
   schedule:
-    # تم التحديث للنشر كل 4 ساعات (00:00, 04:00, 08:00, 12:00, 16:00, 20:00)
-    - cron: '0 */4 * * *'
-  workflow_dispatch:      # زر للتشغيل اليدوي من واجهة GitHub
+    # النشر كل 6 ساعات (تغطية عالمية متوازنة مع الحفاظ على الـ RC)
+    - cron: '0 */6 * * *'
+  workflow_dispatch:      # للتشغيل اليدوي الفوري
 
 jobs:
   build:
